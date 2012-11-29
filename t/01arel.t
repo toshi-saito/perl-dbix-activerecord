@@ -14,12 +14,12 @@ use DBIx::ActiveRecord::Arel::Native;
     my $user = DBIx::ActiveRecord::Arel->create('users');
     my $comment = DBIx::ActiveRecord::Arel->create('comments');
 
-    $user->child_relation($post, id => 'user_id');
-    $post->parent_relation($user, user_id => 'id');
+    $user->child_relation($post, {foreign_key => 'user_id', primary_key => 'id'});
+    $post->parent_relation($user, {foreign_key => 'user_id', primary_key => 'id'});
 
-    $post->child_relation($comment, id => 'post_id');
-    $comment->parent_relation($post, post_id => 'id');
-    $comment->parent_relation($user, user_id => 'id');
+    $post->child_relation($comment, {foreign_key => 'post_id', primary_key => 'id'});
+    $comment->parent_relation($post, {foreign_key => 'post_id', primary_key => 'id'});
+    $comment->parent_relation($user, {foreign_key => 'user_id', primary_key => 'id'});
 
     # where
     my $scope = $user->eq(id => 1);

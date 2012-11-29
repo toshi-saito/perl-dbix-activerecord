@@ -3,13 +3,13 @@ use strict;
 use warnings;
 
 sub new {
-    my ($self, $join_type, $rel_column, $dest_column) = @_;
-    bless {type => $join_type, rel => $rel_column, dest => $dest_column}, $self;
+    my ($self, $join_type, $primary_key_column, $foreign_key_column) = @_;
+    bless {type => $join_type, pk => $primary_key_column, fk => $foreign_key_column}, $self;
 }
 
 sub build {
     my $self = shift;
-    $self->{type}.' '.$self->{dest}->table->table.' ON '.$self->{dest}->name.' = '.$self->{rel}->name;
+    $self->{type}.' '.$self->{fk}->table->table.' ON '.$self->{fk}->name.' = '.$self->{pk}->name;
 }
 
 1;

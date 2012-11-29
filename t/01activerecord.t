@@ -193,11 +193,8 @@ DBIx::ActiveRecord->connect("dbi:mysql:ar_test", 'root', '', {});
 
     my $u = User->new({name => 'aaa'});
     $u->save;
-    my $s = $u->post;
+    my $post = $u->post;
 
-    is $s->to_sql, "SELECT * FROM posts WHERE user_id = ? LIMIT 1";
-    is_deeply [$s->_binds], [$u->id];
-    $s->all;
     ok 1;
 }
 
@@ -244,5 +241,66 @@ DBIx::ActiveRecord->connect("dbi:mysql:ar_test", 'root', '', {});
     User->last;
     ok 1;
 }
+
+{
+    # transaction
+    User->transaction(sub {
+    });
+    User->transaction(sub {
+      die;
+    });
+}
+
+{
+    # scope cache
+#    print STDERR "*** cache test ***\n";
+    User->all;
+    User->all;
+
+#    print STDERR "*** all only ***\n";
+    my $s = User->scoped;
+    $s->all;
+    $s->first;
+    $s->last;
+
+#    print STDERR "*** first, last, all ***\n";
+    $s = User->scoped;
+    $s->first;
+    $s->last;
+    $s->first;
+    $s->last;
+    $s->all;
+    $s->all;
+
+#    print STDERR "*** new scope! ***\n";
+    $s->eq(id => 1)->all;
+
+    ok 1;
+}
+# includes
+{
+
+#    print STDERR "*** includes user => posts ***\n";
+    User->unscoped->delete;
+    Post->unscoped->delete;
+    my $u1 = User->new({name => 'hoge', deleted => 0});
+    my $u2 = User->new({name => 'fuga', deleted => 0});
+    $u1->save;
+    $u2->save;
+
+    Post->new({title => 'hoge 01', user_id => $u1->id})->save;
+    Post->new({title => 'hoge 02', user_id => $u1->id})->save;
+    Post->new({title => 'hoge 03', user_id => $u1->id})->save;
+    Post->new({title => 'hoge 04', user_id => $u1->id})->save;
+    Post->new({title => 'fuga 01', user_id => $u2->id})->save;
+    Post->new({title => 'fuga 02', user_id => $u2->id})->save;
+
+    my $us = User->includes('posts')->all;
+    is @{$us->[0]->posts->all}, 4;
+    is @{$us->[1]->posts->all}, 2;
+
+    ok 1;
+}
+# multi join
 
 done_testing;

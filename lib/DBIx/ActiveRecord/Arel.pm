@@ -342,12 +342,12 @@ sub count {
 
 # relations
 sub parent_relation {
-    my ($self, $target, $rel_id, $dest_id) = @_;
-    $self->{rels}->{$target->table} = DBIx::ActiveRecord::Arel::Join->new('INNER JOIN', $self->_col($rel_id), $target->_col($dest_id));
+    my ($self, $target, $opt) = @_;
+    $self->{rels}->{$target->table} = DBIx::ActiveRecord::Arel::Join->new('INNER JOIN', $self->_col($opt->{foreign_key}), $target->_col($opt->{primary_key}));
 }
 
 sub child_relation {
-    my ($self, $target, $rel_id, $dest_id) = @_;
-    $self->{rels}->{$target->table} = DBIx::ActiveRecord::Arel::Join->new('LEFT JOIN', $self->_col($rel_id), $target->_col($dest_id));
+    my ($self, $target, $opt) = @_;
+    $self->{rels}->{$target->table} = DBIx::ActiveRecord::Arel::Join->new('LEFT JOIN', $self->_col($opt->{primary_key}), $target->_col($opt->{foreign_key}));
 }
 1;

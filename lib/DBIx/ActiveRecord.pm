@@ -4,6 +4,8 @@ use warnings;
 
 use DBI;
 
+our $VERSION = 0.1;
+
 my $DBH;
 my $SINGLETON;
 our %GLOBAL;
@@ -22,6 +24,7 @@ sub init {
         $self->_load_fields($package);
         $self->_make_field_accessors($package);
     }
+    $self->_trace_sql;
 }
 
 sub _load_model {
@@ -55,7 +58,45 @@ sub _make_field_accessors {
     }
 }
 
+sub debug {
+    return if !$ENV{AR_TRACE_SQL};
+    my $self = shift;
+    my $method = shift;
+    my $query = shift;
+    my @binds = @_;
+    $query =~ s/\?/my $v = shift(@binds);"'$v'";/eg;
+    print STDERR "$method: $query\n";
+}
+
+sub _trace_sql {
+    my $self = shift;
+    return if !$ENV{AR_TRACE_SQL};
+    no strict 'refs';
+    no warnings 'redefine';
+
+    my $execure_org = DBI::st->can('execute');
+    *DBI::st::execute = sub {
+        my $sth = shift;
+        $self->debug('execute', $sth->{Statement}, @_);
+        $execure_org->($sth, @_);
+    };
+}
+
 sub dbh {$DBH}
+
+sub transaction {
+    my ($self, $coderef) = @_;
+    $self->debug("begin_work", "");
+    $self->dbh->begin_work;
+    eval {$coderef->()};
+    if ($@) {
+      $self->debug("rollback", $@);
+      $self->dbh->rollback
+    } else {
+      $self->debug("commit", $@);
+      $self->dbh->commit;
+    }
+}
 
 sub DESTROY {
     my ($self) = @_;

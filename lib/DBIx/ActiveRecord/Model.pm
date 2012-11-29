@@ -28,51 +28,62 @@ sub table {
 }
 
 sub belongs_to {
-    my ($self, $name, $package, $rel_id, $dest_id) = @_;
+    my ($self, $name, $package, $opt) = @_;
 
-    if (!$rel_id) {
+    $opt->{primary_key} = 'id' if !$opt->{primary_key};
+    if (!$opt->{foreign_key}) {
         $package =~ /([^:]+)$/;
-        $rel_id = lc($1)."_id";
+        $opt->{foreign_key} = lc($1)."_id";
     }
-    $dest_id = 'id' if !$dest_id;
 
-    $self->_global->{arel}->parent_relation($package->arel, $rel_id, $dest_id);
+    $self->_global->{arel}->parent_relation($package->arel, $opt);
     $self->_global->{joins}->{$name} = $package;
+    $self->_global->{includes}->{$name} = {%$opt, one => 1};
 
     no strict 'refs';
     *{$self."::$name"} = sub {
         my $self = shift;
-        $package->eq($dest_id => $self->$rel_id);
+
+        return $self->{associates_cache}->{$name} if exists $self->{associates_cache}->{$name};
+
+        my $m = $opt->{foreign_key};
+        $package->eq($opt->{primary_key} => $self->$m);
     };
 }
 
 sub has_one {
-    my ($self, $name, $package, $rel_id, $dest_id) = @_;
-    $self->_add_has_relation($name, $package, $rel_id, $dest_id, 1);
+    my ($self, $name, $package, $opt) = @_;
+    $self->_add_has_relation($name, $package, $opt, 1);
 }
 
 sub has_many {
-    my ($self, $name, $package, $rel_id, $dest_id) = @_;
-    $self->_add_has_relation($name, $package, $rel_id, $dest_id, 0);
+    my ($self, $name, $package, $opt) = @_;
+    $self->_add_has_relation($name, $package, $opt, 0);
 }
 
 sub _add_has_relation {
-    my ($self, $name, $package, $rel_id, $dest_id, $has_one) = @_;
+    my ($self, $name, $package, $opt, $has_one) = @_;
 
-    $rel_id = 'id' if !$rel_id;
-    if (!$dest_id) {
+
+    $opt->{primary_key} = 'id' if !$opt->{primary_key};
+    if (!$opt->{foreign_key}) {
         $self =~ /([^:]+)$/;
-        $dest_id = lc($1)."_id";
+        $opt->{foreign_key} = lc($1)."_id";
     }
 
-    $self->_global->{arel}->child_relation($package->arel, $rel_id, $dest_id);
+    $self->_global->{arel}->child_relation($package->arel, $opt);
     $self->_global->{joins}->{$name} = $package;
+    $self->_global->{includes}->{$name} = {%$opt, one => $has_one};
 
     no strict 'refs';
     *{$self."::$name"} = sub {
         my $self = shift;
-        my $s = $package->eq($dest_id, $self->$rel_id);
-        $has_one ? $s->limit(1) : $s;
+
+        return $self->{associates_cache}->{$name} if exists $self->{associates_cache}->{$name};
+
+        my $m = $opt->{primary_key};
+        my $s = $package->eq($opt->{foreign_key}, $self->$m);
+        $has_one ? $s->limit(1)->first : $s;
     };
 }
 
@@ -99,12 +110,22 @@ sub DESTROY{}
 
 sub arel {shift->_global->{arel}->clone}
 
+sub transaction {
+    my $self = shift;
+    DBIx::ActiveRecord->transaction(@_);
+}
+
 sub scoped {
     my ($self) = @_;
     my $r = DBIx::ActiveRecord::Relation->new($self);
     my $ds = $self->_global->{default_scope};
     $r = $ds->($r) if $ds;
     $r;
+}
+
+sub unscoped {
+    my ($self) = @_;
+    DBIx::ActiveRecord::Relation->new($self);
 }
 
 sub new {

@@ -6,7 +6,7 @@ use base qw/Exporter/;
 
 our @ISA = qw/Exporter/;
 my @delegates = qw/eq ne in not_in null not_null gt lt ge le like contains starts_with ends_with between where select limit offset lock group asc desc reorder reverse/;
-our @EXPORT = (@delegates, qw/_scoped _scope merge all joins first last/);
+our @EXPORT = (@delegates, qw/scoped_instance _scope merge all joins first last _execute includes _loads_includes/);
 
 {
     no strict 'refs';
@@ -18,49 +18,98 @@ our @EXPORT = (@delegates, qw/_scoped _scope merge all joins first last/);
     }
 }
 
-sub _scoped {
-    my $self = shift;
-    ref $self ? $self : $self->scoped;
-}
-
 sub _scope {
     my $self = shift;
     my $method = shift;
-    my $s = $self->_scoped;
+    my $s = $self->scoped;
     $s->{arel} = $s->{arel}->$method(@_);
     $s;
 }
 
 sub merge {
     my ($self, $relation) = @_;
-    my $s = $self->_scoped;
+    my $s = $self->scoped;
     $s->{arel} = $s->{arel}->merge($relation->{arel});
     $s;
 }
 
 sub all {
+    shift->_execute;
+}
+
+sub scoped_instance {
     my $self = shift;
-    my $s = $self->_scoped;
-    $s->{model}->instantiates_by_relation($s);
+    ref $self ? $self : $self->scoped;
 }
 
 sub first {
     my $self = shift;
-    my $r = $self->limit(1)->all;
+    my $s = $self->scoped_instance;
+    my $org = $s->{arel}->clone;
+    $s->{arel} = $s->{arel}->limit(1);
+    my $r = $s->_execute;
+    $s->{arel} = $org;
     @$r ? $r->[0] : undef;
 }
 
 sub last {
     my $self = shift;
-    my $r = $self->limit(1)->reverse->all;
+    my $s = $self->scoped_instance;
+    my $org = $s->{arel}->clone;
+    $s->{arel} = $s->{arel}->limit(1)->reverse;
+    my $r = $s->_execute;
+    $s->{arel} = $org;
     @$r ? $r->[0] : undef;
+}
+
+sub _execute {
+    my $self = shift;
+    my $s = $self->scoped_instance;
+    my $rs = $s->{model}->instantiates_by_relation($s);
+    $s->_loads_includes($rs);
+    $rs;
+}
+
+sub _loads_includes {
+    my ($self, $rs) = @_;
+    my $s = $self->scoped_instance;
+    foreach my $opt (@{$s->{_includes}}) {
+        my $model = $opt->{model};
+        my $primary_key = $opt->{primary_key};
+        my $foreign_key = $opt->{foreign_key};
+        my %pkeys;
+        map {$pkeys{$_->$primary_key} = 1} @$rs;
+        next if !keys %pkeys;
+        my $ir = $model->in($foreign_key => [keys %pkeys])->all;
+        foreach my $r (@$rs) {
+            my @r = grep {$r->$primary_key eq $_->$foreign_key} @$ir;
+            if ($opt->{one}) {
+                $r->{associates_cache}->{$opt->{name}} = $r[0];
+            } else {
+                my $s = $model->eq($foreign_key => $r->$primary_key);
+                $s->{cache}->{all} = \@r;
+                $r->{associates_cache}->{$opt->{name}} = $s;
+            }
+        }
+    }
 }
 
 sub joins {
     my ($self, $name) = @_;
-    my $s = $self->_scoped;
+    my $s = $self->scoped;
     my $model = $s->{model}->_global->{joins}->{$name} || die "no relation!";
     $s->{arel} = $s->{arel}->joins($model->_global->{arel});
     $s;
 }
+
+sub includes {
+    my ($self, $name) = @_;
+    my $s = $self->scoped;
+    my $model = $s->{model}->_global->{joins}->{$name} || die "no relation!";
+    my $opt = $s->{model}->_global->{includes}->{$name};
+    $s->{_includes} ||= [];
+    push @{$s->{_includes}}, {%$opt, model => $model, name => $name};
+    $s;
+}
+
 1;

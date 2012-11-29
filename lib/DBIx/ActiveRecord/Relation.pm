@@ -10,6 +10,13 @@ sub new {
     bless {model => $model, arel => $model->arel}, $self;
 }
 
+sub scoped {
+    my ($self) = @_;
+    my $s = __PACKAGE__->new($self->{model});
+    $s->{arel} = $self->{arel}->clone;
+    $s;
+}
+
 sub to_sql {shift->{arel}->to_sql}
 sub _binds {shift->{arel}->binds}
 
@@ -36,10 +43,33 @@ sub AUTOLOAD {
     my $m = $1;
     my $s = $self->{model}->_global->{scopes}->{$m};
     die "method missing $AUTOLOAD" if !$s;
-    $s->($self->_scoped, @_);
+    $s->($self->scoped, @_);
 }
 
 sub DESTROY{}
 
+{
+    no strict 'refs';
+    no warnings 'redefine';
+
+    *{__PACKAGE__."::all"} = sub {
+        my $self = shift;
+        $self->{cache}->{all} ||= DBIx::ActiveRecord::Scope::all($self, @_);
+    };
+
+    *{__PACKAGE__."::first"} = sub {
+        my $self = shift;
+        return $self->{cache}->{all}->[0] if $self->{cache}->{all};
+        return $self->{cache}->{first} if exists $self->{cache}->{first};
+        $self->{cache}->{first} = DBIx::ActiveRecord::Scope::first($self, @_);
+    };
+
+    *{__PACKAGE__."::last"} = sub {
+        my $self = shift;
+        return $self->{cache}->{all}->[-1] if $self->{cache}->{all};
+        return $self->{cache}->{last} if exists $self->{cache}->{last};
+        $self->{cache}->{last} = DBIx::ActiveRecord::Scope::last($self, @_);
+    };
+}
 
 1;
