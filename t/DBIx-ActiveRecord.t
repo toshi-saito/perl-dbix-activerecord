@@ -3,11 +3,12 @@ use warnings;
 use Test::More;
 
 use FindBin;
-
 use lib "$FindBin::Bin/../lib";
 
-use DBIx::ActiveRecord;
-use DBIx::ActiveRecord::Model;
+BEGIN {
+    use_ok('DBIx::ActiveRecord');
+    use_ok('DBIx::ActiveRecord::Model');
+};
 
 =pod
 create database ar_test;
@@ -47,7 +48,7 @@ package main;
 DBIx::ActiveRecord->connect("dbi:mysql:ar_test", 'root', '', {});
 {
     # set up
-    DBIx::ActiveRecord->dbh->do('truncate table users');
+    User->unscoped->delete_all;
     ok 1;
 }
 
@@ -115,9 +116,9 @@ DBIx::ActiveRecord->connect("dbi:mysql:ar_test", 'root', '', {});
 
 {
     # scoped searches
-    User->new({name => 'hoge'})->save;
-    User->new({name => 'fuga'})->save;
-    User->new({name => 'hoge2', profile => 'a'})->save;
+    User->create({name => 'hoge'});
+    User->create({name => 'fuga'});
+    User->create({name => 'hoge2', profile => 'a'});
 
     my $s = User->eq(name => 'hoge');
     my $us = $s->all;
@@ -144,7 +145,7 @@ DBIx::ActiveRecord->connect("dbi:mysql:ar_test", 'root', '', {});
 
      is(User->scoped->to_sql, "SELECT * FROM users WHERE deleted != ?");
 
-     User->scoped->delete;
+     User->delete_all;
      User->new({deleted => 1, name => 'deleted user'})->save;
 
      my $us = User->all;
@@ -281,8 +282,8 @@ DBIx::ActiveRecord->connect("dbi:mysql:ar_test", 'root', '', {});
 {
 
 #    print STDERR "*** includes user => posts ***\n";
-    User->unscoped->delete;
-    Post->unscoped->delete;
+    User->unscoped->delete_all;
+    Post->unscoped->delete_all;
     my $u1 = User->new({name => 'hoge', deleted => 0});
     my $u2 = User->new({name => 'fuga', deleted => 0});
     $u1->save;
@@ -299,6 +300,20 @@ DBIx::ActiveRecord->connect("dbi:mysql:ar_test", 'root', '', {});
     is @{$us->[0]->posts->all}, 4;
     is @{$us->[1]->posts->all}, 2;
 
+    ok 1;
+}
+
+{
+    # array operator
+    ok @{User->scoped};
+
+    my $users = User->includes('posts');
+    foreach my $u (@$users) {
+        foreach my $p (@{$u->posts}) {
+            ok $u;
+            ok $p;
+        }
+    }
     ok 1;
 }
 # multi join

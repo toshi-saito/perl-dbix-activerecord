@@ -115,6 +115,10 @@ sub transaction {
     DBIx::ActiveRecord->transaction(@_);
 }
 
+sub all {DBIx::ActiveRecord::Scope::all(@_)}
+sub first {DBIx::ActiveRecord::Scope::first(@_)}
+sub last {DBIx::ActiveRecord::Scope::last(@_)}
+
 sub scoped {
     my ($self) = @_;
     my $r = DBIx::ActiveRecord::Relation->new($self);
@@ -158,6 +162,13 @@ sub to_hash {
 }
 
 sub in_storage { shift->{in_storage} }
+
+sub create {
+    my ($self, $hash) = @_;
+    my $o = $self->new($hash);
+    $o->save;
+    $o;
+}
 
 sub save {
     my $self = shift;

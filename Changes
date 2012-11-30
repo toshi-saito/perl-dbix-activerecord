@@ -1,0 +1,6 @@
+Revision history for Perl extension DBIx::ActiveRecord.
+
+0.01  Thu Nov 29 17:47:36 2012
+	- original version; created by h2xs 1.23 with options
+		-AX -n DBIx::ActiveRecord
+

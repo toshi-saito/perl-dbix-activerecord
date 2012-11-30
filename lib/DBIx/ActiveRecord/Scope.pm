@@ -6,7 +6,7 @@ use base qw/Exporter/;
 
 our @ISA = qw/Exporter/;
 my @delegates = qw/eq ne in not_in null not_null gt lt ge le like contains starts_with ends_with between where select limit offset lock group asc desc reorder reverse/;
-our @EXPORT = (@delegates, qw/scoped_instance _scope merge all joins first last _execute includes _loads_includes/);
+our @EXPORT = (@delegates, qw/scoped_instance _scope _execute merge joins includes _loads_includes update_all delete_all/);
 
 {
     no strict 'refs';
@@ -26,20 +26,31 @@ sub _scope {
     $s;
 }
 
-sub merge {
-    my ($self, $relation) = @_;
-    my $s = $self->scoped;
-    $s->{arel} = $s->{arel}->merge($relation->{arel});
-    $s;
+sub scoped_instance {
+    my $self = shift;
+    ref $self ? $self : $self->scoped;
+}
+
+sub update_all {
+    my ($self, $sets) = @_;
+    $self = $self->scoped;
+    my $s = $self->{arel}->clone;
+    my $sql = $s->update($sets);
+    my $sth = $self->{model}->dbh->prepare($sql);
+    $sth->execute($s->binds);
+}
+
+sub delete_all {
+    my ($self) = @_;
+    $self = $self->scoped;
+    my $s = $self->{arel}->clone;
+    my $sql = $s->delete;
+    my $sth = $self->{model}->dbh->prepare($sql);
+    $sth->execute($s->binds);
 }
 
 sub all {
     shift->_execute;
-}
-
-sub scoped_instance {
-    my $self = shift;
-    ref $self ? $self : $self->scoped;
 }
 
 sub first {
@@ -92,6 +103,13 @@ sub _loads_includes {
             }
         }
     }
+}
+
+sub merge {
+    my ($self, $relation) = @_;
+    my $s = $self->scoped;
+    $s->{arel} = $s->{arel}->merge($relation->{arel});
+    $s;
 }
 
 sub joins {

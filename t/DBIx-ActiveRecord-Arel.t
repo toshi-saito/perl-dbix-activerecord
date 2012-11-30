@@ -3,11 +3,12 @@ use warnings;
 use Test::More;
 
 use FindBin;
-
 use lib "$FindBin::Bin/../lib";
 
-use DBIx::ActiveRecord::Arel;
-use DBIx::ActiveRecord::Arel::Native;
+BEGIN {
+    use_ok('DBIx::ActiveRecord::Arel');
+    use_ok('DBIx::ActiveRecord::Arel::Native');
+};
 
 {
     my $post = DBIx::ActiveRecord::Arel->create('posts');
@@ -152,10 +153,6 @@ use DBIx::ActiveRecord::Arel::Native;
     is $scope->to_sql, 'SELECT MAX(*) FROM users LEFT JOIN posts ON posts.user_id = users.id GROUP BY users.type';
     is_deeply [$scope->binds], [];
 
-    # TODO
-    # mysql, postgres, oracle, sqlite dialect
-    # triple join
-
     # update
     $scope = $user->eq(id => 3);
     is $scope->update({hoge => 1}), 'UPDATE users SET hoge = ? WHERE id = ?';
@@ -184,7 +181,7 @@ use DBIx::ActiveRecord::Arel::Native;
     $scope = $user->eq(type => 'AA');
     is $scope->count, 'SELECT COUNT(*) FROM users WHERE type = ?';
     is_deeply [$scope->binds], ['AA'];
-}
 
+}
 
 done_testing;
