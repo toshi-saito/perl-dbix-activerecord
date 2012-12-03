@@ -6,7 +6,7 @@ use base qw/Exporter/;
 
 our @ISA = qw/Exporter/;
 my @delegates = qw/eq ne in not_in null not_null gt lt ge le like contains starts_with ends_with between where select limit offset lock group asc desc reorder reverse/;
-our @EXPORT = (@delegates, qw/scoped_instance _scope _execute merge joins includes _loads_includes update_all delete_all/);
+our @EXPORT = (@delegates, qw/scoped_instance _scope _execute merge joins includes _includes _loads_includes update_all delete_all/);
 
 {
     no strict 'refs';
@@ -77,14 +77,14 @@ sub _execute {
     my $self = shift;
     my $s = $self->scoped_instance;
     my $rs = $s->{model}->instantiates_by_relation($s);
-    $s->_loads_includes($rs);
+    $s->_loads_includes($s->{_includes}, $rs);
     $rs;
 }
 
 sub _loads_includes {
-    my ($self, $rs) = @_;
-    my $s = $self->scoped_instance;
-    foreach my $opt (@{$s->{_includes}}) {
+    my ($self, $inc, $rs) = @_;
+    foreach my $k (keys %$inc) {
+        my $opt = $inc->{$k};
         my $model = $opt->{model};
         my $primary_key = $opt->{primary_key};
         my $foreign_key = $opt->{foreign_key};
@@ -92,6 +92,7 @@ sub _loads_includes {
         map {$pkeys{$_->$primary_key} = 1} @$rs;
         next if !keys %pkeys;
         my $ir = $model->in($foreign_key => [keys %pkeys])->all;
+        $self->_loads_includes($opt->{_includes}, $ir) if $opt->{_includes};
         foreach my $r (@$rs) {
             my @r = grep {$r->$primary_key eq $_->$foreign_key} @$ir;
             if ($opt->{one}) {
@@ -113,20 +114,37 @@ sub merge {
 }
 
 sub joins {
-    my ($self, $name) = @_;
+    my $self = shift;
     my $s = $self->scoped;
-    my $model = $s->{model}->_global->{joins}->{$name} || die "no relation!";
-    $s->{arel} = $s->{arel}->joins($model->_global->{arel});
+    my $model = $s->{model};
+    my @arels;
+    foreach my $name (@_) {
+        my $m = $model->_global->{joins}->{$name} || die "no relation!";
+        push @arels, $m->_global->{arel};
+        $model = $m;
+    }
+    $s->{arel} = $s->{arel}->joins(@arels);
     $s;
 }
 
 sub includes {
-    my ($self, $name) = @_;
+    my $self = shift;
     my $s = $self->scoped;
-    my $model = $s->{model}->_global->{joins}->{$name} || die "no relation!";
-    my $opt = $s->{model}->_global->{includes}->{$name};
-    $s->{_includes} ||= [];
-    push @{$s->{_includes}}, {%$opt, model => $model, name => $name};
+    $s->{_includes} ||= {};
+    my $inc = $s->{_includes};
+    my $parent = $s->{model};
+    my $h;
+    foreach my $name (@_) {
+        $inc->{$name} ||= {};
+        $h = $inc->{$name};
+        my $model = $parent->_global->{joins}->{$name} || die "no relation!";
+        my $opt = $parent->_global->{includes}->{$name};
+        my $i = {%$opt, model => $model, name => $name};
+        map {$h->{$_} = $i->{$_}} keys %$i;
+        $parent = $model;
+        $h->{_includes} ||= {};
+        $inc = $h->{_includes};
+    }
     $s;
 }
 

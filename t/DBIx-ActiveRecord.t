@@ -30,6 +30,14 @@ CREATE TABLE posts (
   created_at datetime NOT NULL,
   updated_at datetime NOT NULL
 ) ENGINE=InnoDB;
+CREATE TABLE comments (
+  id serial NOT NULL,
+  post_id bigint NOT NULL,
+  user_id bigint NOT NULL,
+  content text,
+  created_at datetime NOT NULL,
+  updated_at datetime NOT NULL
+) ENGINE=InnoDB;
 =cut
 
 package User;
@@ -41,6 +49,11 @@ package Post;
 use base 'DBIx::ActiveRecord::Model';
 __PACKAGE__->table('posts');
 # end Post Model
+
+package Comment;
+use base 'DBIx::ActiveRecord::Model';
+__PACKAGE__->table('comments');
+# end Comment Model
 
 package main;
 
@@ -316,6 +329,42 @@ DBIx::ActiveRecord->connect("dbi:mysql:ar_test", 'root', '', {});
     }
     ok 1;
 }
-# multi join
+
+{
+    # nested joins
+    Post->has_many(comments => 'Comment');
+
+    my $users = User->joins('posts', 'comments');
+    ok @{$users};
+
+    is $users->to_sql, "SELECT users.* FROM users LEFT JOIN posts ON posts.user_id = users.id LEFT JOIN comments ON comments.post_id = posts.id WHERE users.deleted != ?";
+}
+
+{
+    # nested includes
+    User->unscoped->delete_all;
+    Post->unscoped->delete_all;
+    Comment->delete_all;
+
+    my $u1 = User->create({name => 'hoge', deleted => 0});
+    my $u2 = User->create({name => 'fuga', deleted => 0});
+
+    my $p1 = Post->create({user_id => $u1->id, title => "hoge 01"});
+    Comment->create({content => 'hoge 01 com1', post_id => $p1->id, user_id => $u2->id});
+    Comment->create({content => 'hoge 01 com2', post_id => $p1->id, user_id => $u2->id});
+    Comment->create({content => 'hoge 01 com3', post_id => $p1->id, user_id => $u2->id});
+    Comment->create({content => 'hoge 01 com4', post_id => $p1->id, user_id => $u2->id});
+
+    my $p2 = Post->create({user_id => $u1->id, title => "hoge 02"});
+    Comment->create({content => 'hoge 02 com1', post_id => $p2->id, user_id => $u2->id});
+    Comment->create({content => 'hoge 02 com2', post_id => $p2->id, user_id => $u2->id});
+
+    my $p3 = Post->create({user_id => $u2->id, title => "fuga 01"});
+    Comment->create({content => 'fuga 01 com1', post_id => $p3->id, user_id => $u1->id});
+    Comment->create({content => 'fuga 01 com2', post_id => $p3->id, user_id => $u1->id});
+
+    my $users = User->includes('posts', 'comments');
+    ok @{$users};
+}
 
 done_testing;

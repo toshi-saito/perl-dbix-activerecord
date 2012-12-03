@@ -209,10 +209,14 @@ sub between {
 
 # join
 sub joins {
-    my ($self, $table) = @_;
+    my $self = shift;
     my $o = $self->clone;
     $o->{joins} ||= [];
-    push @{$o->{joins}}, $self->{rels}->{$table->table};
+    my $parent = $self;
+    foreach my $arel (@_) {
+        push @{$o->{joins}}, $parent->{rels}->{$arel->table};
+        $parent = $arel;
+    }
     $o;
 }
 

@@ -182,6 +182,16 @@ BEGIN {
     is $scope->count, 'SELECT COUNT(*) FROM users WHERE type = ?';
     is_deeply [$scope->binds], ['AA'];
 
+    # nested join
+    $scope = $post->joins($comment);
+    is $scope->to_sql, 'SELECT posts.* FROM posts LEFT JOIN comments ON comments.post_id = posts.id';
+
+    $scope = $user->joins($post, $comment);
+    is $scope->to_sql, 'SELECT users.* FROM users LEFT JOIN posts ON posts.user_id = users.id LEFT JOIN comments ON comments.post_id = posts.id';
+
+    $scope = $scope->merge($comment->eq(content => 'hoge'));
+    is $scope->to_sql, 'SELECT users.* FROM users LEFT JOIN posts ON posts.user_id = users.id LEFT JOIN comments ON comments.post_id = posts.id WHERE comments.content = ?';
+    is_deeply [$scope->binds], ['hoge'];
 }
 
 done_testing;
