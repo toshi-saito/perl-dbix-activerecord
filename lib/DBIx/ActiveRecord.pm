@@ -8,8 +8,8 @@ use DBI;
 
 our $VERSION = '0.01';
 
-my $DBH;
-my $SINGLETON;
+our $DBH;
+our $SINGLETON;
 our %GLOBAL;
 
 sub connect {
@@ -23,10 +23,9 @@ sub init {
     my $self = shift;
     foreach my $package (keys %GLOBAL) {
         $self->_load_model($package);
-        $self->_load_fields($package);
         $self->_make_field_accessors($package);
     }
-    $self->_trace_sql;
+    $self->_define_associates;
 }
 
 sub _load_model {
@@ -35,17 +34,6 @@ sub _load_model {
     $file =~ s/::/\//;
     $file .= ".pm";
     eval {require $file};
-}
-
-sub _load_fields {
-    my $self = shift;
-    my $pkg = shift;
-    my $sth = $self->dbh->prepare('DESCRIBE '.$pkg->table);
-    $sth->execute;
-    while (my $row = $sth->fetchrow_hashref) {
-        push @{$pkg->_global->{columns}}, $row->{Field};
-        push @{$pkg->_global->{primary_keys}}, $row->{Field} if $row->{Key} eq 'PRI';
-    }
 }
 
 sub _make_field_accessors {
@@ -60,27 +48,60 @@ sub _make_field_accessors {
     }
 }
 
-sub debug {
-    return if !$ENV{AR_TRACE_SQL};
+sub _define_associates {
     my $self = shift;
-    my $method = shift;
-    my $query = shift;
-    my @binds = @_;
-    $query =~ s/\?/my $v = shift(@binds);"'$v'";/eg;
-    print STDERR "$method: $query\n";
+    foreach my $package (keys %GLOBAL) {
+        $self->_define_belong_to($package, @$_) for @{$package->_global->{belongs_to}||[]};
+        $self->_define_has_relation($package, @$_) for @{$package->_global->{has_relation}||[]};
+    }
 }
 
-sub _trace_sql {
-    my $self = shift;
-    return if !$ENV{AR_TRACE_SQL};
-    no strict 'refs';
-    no warnings 'redefine';
+sub _define_belong_to {
+    my ($self, $pkg, $name, $package, $opt) = @_;
 
-    my $execure_org = DBI::st->can('execute');
-    *DBI::st::execute = sub {
-        my $sth = shift;
-        $self->debug('execute', $sth->{Statement}, @_);
-        $execure_org->($sth, @_);
+    $opt->{primary_key} = 'id' if !$opt->{primary_key};
+    if (!$opt->{foreign_key}) {
+        $package =~ /([^:]+)$/;
+        $opt->{foreign_key} = lc($1)."_id";
+    }
+
+    $pkg->_global->{arel}->parent_relation($package->arel, $opt);
+    $pkg->_global->{joins}->{$name} = $package;
+    $pkg->_global->{includes}->{$name} = {%$opt, belongs_to => 1, one => 1};
+
+    no strict 'refs';
+    *{$pkg."::$name"} = sub {
+        my $self = shift;
+
+        return $self->{associates_cache}->{$name} if exists $self->{associates_cache}->{$name};
+
+        my $m = $opt->{foreign_key};
+        $package->unscoped->eq($opt->{primary_key} => $self->$m)->first;
+    };
+}
+
+sub _define_has_relation {
+    my ($self, $pkg, $name, $package, $opt, $has_one) = @_;
+
+    $opt->{primary_key} = 'id' if !$opt->{primary_key};
+    if (!$opt->{foreign_key}) {
+        $pkg =~ /([^:]+)$/;
+        $opt->{foreign_key} = lc($1)."_id";
+    }
+
+    $pkg->_global->{arel}->child_relation($package->arel, $opt);
+    $pkg->_global->{joins}->{$name} = $package;
+    $pkg->_global->{includes}->{$name} = {%$opt, one => $has_one};
+
+    no strict 'refs';
+    *{$pkg."::$name"} = sub {
+        my $self = shift;
+
+        return $self->{associates_cache}->{$name} if exists $self->{associates_cache}->{$name};
+
+        my $m = $opt->{primary_key};
+        my $s = $package->eq($opt->{foreign_key}, $self->$m);
+        $has_one ? $s->limit(1)->first : $s;
     };
 }
 
@@ -88,14 +109,11 @@ sub dbh {$DBH}
 
 sub transaction {
     my ($self, $coderef) = @_;
-    $self->debug("begin_work", "");
     $self->dbh->begin_work;
     eval {$coderef->()};
     if ($@) {
-      $self->debug("rollback", $@);
-      $self->dbh->rollback
+      $self->dbh->rollback;
     } else {
-      $self->debug("commit", $@);
       $self->dbh->commit;
     }
 }

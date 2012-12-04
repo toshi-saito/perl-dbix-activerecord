@@ -305,17 +305,17 @@ sub reverse {
 }
 
 sub insert {
-    my ($self, $hash) = @_;
-    my @keys = keys %$hash;
+    my ($self, $hash, $columns) = @_;
+    my @keys = $columns ? grep {exists $hash->{$_}} @$columns : keys %$hash;
     my $sql = 'INSERT INTO '.$self->table.' ('.join(', ', @keys).') VALUES ('.join(', ', map {'?'} @keys).')';
     $self->{binds} = [map {$hash->{$_}} @keys];
     $sql;
 }
 
 sub update {
-    my ($self, $hash) = @_;
+    my ($self, $hash, $columns) = @_;
     $DBIx::ActiveRecord::Arel::Column::USE_FULL_NAME = 0;
-    my @keys = keys %$hash;
+    my @keys = $columns ? grep {exists $hash->{$_}} @$columns : keys %$hash;
     my @set = map {$_.' = ?'} @keys;
     my $sql = 'UPDATE '.$self->table.' SET '.join(', ', @set);
     my $where = $self->_build_where;

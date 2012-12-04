@@ -89,12 +89,15 @@ sub _loads_includes {
         my $primary_key = $opt->{primary_key};
         my $foreign_key = $opt->{foreign_key};
         my %pkeys;
-        map {$pkeys{$_->$primary_key} = 1} @$rs;
+        my $search_key = $opt->{belongs_to} ? $primary_key : $foreign_key;
+        my $my_key = $opt->{belongs_to} ? $foreign_key : $primary_key;
+        my $s = $opt->{belongs_to} ? $model->unscoped : $model->scoped;
+        my @keys = map {$_->$my_key} grep {$pkeys{$_->$my_key} = 1} @$rs;
         next if !keys %pkeys;
-        my $ir = $model->in($foreign_key => [keys %pkeys])->all;
+        my $ir = $s->in($search_key => \@keys)->all;
         $self->_loads_includes($opt->{_includes}, $ir) if $opt->{_includes};
         foreach my $r (@$rs) {
-            my @r = grep {$r->$primary_key eq $_->$foreign_key} @$ir;
+            my @r = grep {$r->$my_key eq $_->$search_key} @$ir;
             if ($opt->{one}) {
                 $r->{associates_cache}->{$opt->{name}} = $r[0];
             } else {

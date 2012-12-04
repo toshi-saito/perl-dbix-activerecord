@@ -27,28 +27,21 @@ sub table {
     $self->_global->{arel} = DBIx::ActiveRecord::Arel->create($table_name);
 }
 
+sub columns {
+    my $self = shift;
+    push @{$self->_global->{columns}}, @_;
+}
+
+sub primary_keys {
+    my $self = shift;
+    push @{$self->_global->{primary_keys}}, @_;
+}
+
 sub belongs_to {
     my ($self, $name, $package, $opt) = @_;
 
-    $opt->{primary_key} = 'id' if !$opt->{primary_key};
-    if (!$opt->{foreign_key}) {
-        $package =~ /([^:]+)$/;
-        $opt->{foreign_key} = lc($1)."_id";
-    }
-
-    $self->_global->{arel}->parent_relation($package->arel, $opt);
-    $self->_global->{joins}->{$name} = $package;
-    $self->_global->{includes}->{$name} = {%$opt, one => 1};
-
-    no strict 'refs';
-    *{$self."::$name"} = sub {
-        my $self = shift;
-
-        return $self->{associates_cache}->{$name} if exists $self->{associates_cache}->{$name};
-
-        my $m = $opt->{foreign_key};
-        $package->eq($opt->{primary_key} => $self->$m);
-    };
+    $self->_global->{belongs_to} ||= [];
+    push @{$self->_global->{belongs_to}}, [$name, $package, $opt];
 }
 
 sub has_one {
@@ -64,27 +57,8 @@ sub has_many {
 sub _add_has_relation {
     my ($self, $name, $package, $opt, $has_one) = @_;
 
-
-    $opt->{primary_key} = 'id' if !$opt->{primary_key};
-    if (!$opt->{foreign_key}) {
-        $self =~ /([^:]+)$/;
-        $opt->{foreign_key} = lc($1)."_id";
-    }
-
-    $self->_global->{arel}->child_relation($package->arel, $opt);
-    $self->_global->{joins}->{$name} = $package;
-    $self->_global->{includes}->{$name} = {%$opt, one => $has_one};
-
-    no strict 'refs';
-    *{$self."::$name"} = sub {
-        my $self = shift;
-
-        return $self->{associates_cache}->{$name} if exists $self->{associates_cache}->{$name};
-
-        my $m = $opt->{primary_key};
-        my $s = $package->eq($opt->{foreign_key}, $self->$m);
-        $has_one ? $s->limit(1)->first : $s;
-    };
+    $self->_global->{has_relation} ||= [];
+    push @{$self->_global->{has_relation}}, [$name, $package, $opt, $has_one];
 }
 
 sub default_scope {
@@ -185,7 +159,7 @@ sub insert {
 
     my $s = $self->scoped;
     $self->_record_timestamp(INSERT_RECORD_TIMESTAMPS);
-    my $sql = $s->{arel}->insert($self->to_hash);
+    my $sql = $s->{arel}->insert($self->to_hash, $self->_global->{columns});
     my $sth = $self->dbh->prepare($sql);
     my $res = $sth->execute($s->_binds);
 
@@ -201,7 +175,7 @@ sub update {
 
     my $s = $self->_pkey_scope;
     $self->_record_timestamp(UPDATE_RECORD_TIMESTAMPS);
-    my $sql = $s->{arel}->update($self->{-set});
+    my $sql = $s->{arel}->update($self->{-set}, $self->_global->{columns});
     my $sth = $self->dbh->prepare($sql);
     $sth->execute($s->_binds);
 }
@@ -227,7 +201,7 @@ sub _record_timestamp {
 
 sub _pkey_scope {
     my $self = shift;
-    my $s = $self->scoped;
+    my $s = $self->unscoped;
     $s = $s->eq($_ => $self->{-org}->{$_} || die 'primary key is empty') for @{$self->_global->{primary_keys}};
     $s;
 }
