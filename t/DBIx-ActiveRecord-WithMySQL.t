@@ -221,7 +221,7 @@ DBIx::ActiveRecord->connect("dbi:mysql:ar_test", 'root', '', {});
     # joins
     my $s = User->joins('posts')->merge(Post->eq(title => 'aaa'));
     $s->all;
-    is $s->to_sql, "SELECT users.* FROM users LEFT JOIN posts ON posts.user_id = users.id WHERE users.deleted != ? AND posts.title = ?";
+    is $s->to_sql, "SELECT me.* FROM users me LEFT JOIN posts posts ON posts.user_id = me.id WHERE me.deleted != ? AND posts.title = ?";
 }
 
 {
@@ -233,7 +233,7 @@ DBIx::ActiveRecord->connect("dbi:mysql:ar_test", 'root', '', {});
     # join and select
     $s = User->joins('posts')->merge(Post->eq(title => 'aaa'))->select("id", "name")->in(id => [1,2,3]);
     $s->all;
-    is $s->to_sql, "SELECT users.id, users.name FROM users LEFT JOIN posts ON posts.user_id = users.id WHERE users.deleted != ? AND posts.title = ? AND users.id IN (?, ?, ?)";
+    is $s->to_sql, "SELECT me.id, me.name FROM users me LEFT JOIN posts posts ON posts.user_id = me.id WHERE me.deleted != ? AND posts.title = ? AND me.id IN (?, ?, ?)";
 }
 
 {
@@ -341,7 +341,7 @@ DBIx::ActiveRecord->connect("dbi:mysql:ar_test", 'root', '', {});
     my $users = User->joins('posts', 'comments');
     ok @{$users};
 
-    is $users->to_sql, "SELECT users.* FROM users LEFT JOIN posts ON posts.user_id = users.id LEFT JOIN comments ON comments.post_id = posts.id WHERE users.deleted != ?";
+    is $users->to_sql, "SELECT me.* FROM users me LEFT JOIN posts posts ON posts.user_id = me.id LEFT JOIN comments comments ON comments.post_id = posts.id WHERE me.deleted != ?";
 }
 
 {

@@ -12,6 +12,7 @@ use DBIx::ActiveRecord::Scope;
 
 use constant INSERT_RECORD_TIMESTAMPS => [qw/created_at updated_at/];
 use constant UPDATE_RECORD_TIMESTAMPS => [qw/updated_at/];
+use constant MAIN_TABLE_ALIAS => 'me';
 
 sub dbh {DBIx::ActiveRecord->dbh}
 
@@ -83,7 +84,7 @@ sub AUTOLOAD {
 }
 sub DESTROY{}
 
-sub arel {shift->_global->{arel}->clone}
+sub arel {shift->_global->{arel}->clone->as(MAIN_TABLE_ALIAS)}
 
 sub transaction {
     my $self = shift;

@@ -3,6 +3,7 @@ use strict;
 use warnings;
 
 our $USE_FULL_NAME = 0;
+our $AS = {};
 
 sub new {
     my ($self, $table, $column) = @_;
@@ -14,7 +15,7 @@ sub table {shift->{table}}
 sub name {
   my $self = shift;
   if ($USE_FULL_NAME) {
-      $self->table->table.'.'.$self->{column};
+      ($AS->{$self->table->table}||$self->table->table).'.'.$self->{column};
   } else {
       $self->{column};
   }

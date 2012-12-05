@@ -237,26 +237,26 @@ subtest association => sub {
 subtest joins => sub {
 
     User->joins("posts")->all;
-    is_issue_sql "SELECT users.* FROM users LEFT JOIN posts ON posts.user_id = users.id WHERE users.deleted = ?", 0;
+    is_issue_sql "SELECT me.* FROM users me LEFT JOIN posts posts ON posts.user_id = me.id WHERE me.deleted = ?", 0;
     is_nothing_more;
 
     Post->joins('user')->all;
-    is_issue_sql "SELECT posts.* FROM posts INNER JOIN users ON users.id = posts.user_id";
+    is_issue_sql "SELECT me.* FROM posts me INNER JOIN users user ON user.id = me.user_id";
     is_nothing_more;
 
     # and search
     Post->joins('user')->eq(id => 2)->all;
-    is_issue_sql "SELECT posts.* FROM posts INNER JOIN users ON users.id = posts.user_id WHERE posts.id = ?", 2;
+    is_issue_sql "SELECT me.* FROM posts me INNER JOIN users user ON user.id = me.user_id WHERE me.id = ?", 2;
     is_nothing_more;
 
     # multi join
     Post->joins('user')->joins('comments')->all;
-    is_issue_sql "SELECT posts.* FROM posts INNER JOIN users ON users.id = posts.user_id LEFT JOIN comments ON comments.post_id = posts.id";
+    is_issue_sql "SELECT me.* FROM posts me INNER JOIN users user ON user.id = me.user_id LEFT JOIN comments comments ON comments.post_id = me.id";
     is_nothing_more;
 
     # nesdted join
     User->joins("posts", "comments")->all;
-    is_issue_sql "SELECT users.* FROM users LEFT JOIN posts ON posts.user_id = users.id LEFT JOIN comments ON comments.post_id = posts.id WHERE users.deleted = ?", 0;
+    is_issue_sql "SELECT me.* FROM users me LEFT JOIN posts posts ON posts.user_id = me.id LEFT JOIN comments comments ON comments.post_id = posts.id WHERE me.deleted = ?", 0;
     is_nothing_more;
 };
 
@@ -264,22 +264,22 @@ subtest merge => sub {ok 1;
 
     # where
     User->joins("posts")->merge(Post->eq(id => 3))->all;
-    is_issue_sql "SELECT users.* FROM users LEFT JOIN posts ON posts.user_id = users.id WHERE users.deleted = ? AND posts.id = ?", 0, 3;
+    is_issue_sql "SELECT me.* FROM users me LEFT JOIN posts posts ON posts.user_id = me.id WHERE me.deleted = ? AND posts.id = ?", 0, 3;
     is_nothing_more;
 
     # select
     User->joins("posts")->merge(Post->select('title'))->all;
-    is_issue_sql "SELECT posts.title FROM users LEFT JOIN posts ON posts.user_id = users.id WHERE users.deleted = ?", 0;
+    is_issue_sql "SELECT posts.title FROM users me LEFT JOIN posts posts ON posts.user_id = me.id WHERE me.deleted = ?", 0;
     is_nothing_more;
 
     # group
     User->joins("posts")->merge(Post->select("title")->group('title'))->all;
-    is_issue_sql "SELECT posts.title FROM users LEFT JOIN posts ON posts.user_id = users.id WHERE users.deleted = ? GROUP BY posts.title", 0;
+    is_issue_sql "SELECT posts.title FROM users me LEFT JOIN posts posts ON posts.user_id = me.id WHERE me.deleted = ? GROUP BY posts.title", 0;
     is_nothing_more;
 
     # order
     User->joins("posts")->merge(Post->desc("id"))->asc("id")->all;
-    is_issue_sql "SELECT users.* FROM users LEFT JOIN posts ON posts.user_id = users.id WHERE users.deleted = ? ORDER BY posts.id DESC, users.id", 0;
+    is_issue_sql "SELECT me.* FROM users me LEFT JOIN posts posts ON posts.user_id = me.id WHERE me.deleted = ? ORDER BY posts.id DESC, me.id", 0;
     is_nothing_more;
 };
 
@@ -448,6 +448,14 @@ subtest chached_associates => sub {
     $p->user;
     is_issue_sql "SELECT * FROM users WHERE id = ? LIMIT 1", 2;
     is_nothing_more;
+};
+
+subtest as => sub {
+
+    User->joins('posts', 'comments')->merge(Post->eq('title', 'hoge'))->merge(Comment->eq('content', 'fuga'))->all;
+    is_issue_sql "SELECT me.* FROM users me LEFT JOIN posts posts ON posts.user_id = me.id LEFT JOIN comments comments ON comments.post_id = posts.id WHERE me.deleted = ? AND posts.title = ? AND comments.content = ?", 0, 'hoge', 'fuga';
+    is_nothing_more;
+
 };
 
 done_testing;

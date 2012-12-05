@@ -65,9 +65,7 @@ sub _define_belong_to {
         $opt->{foreign_key} = lc($1)."_id";
     }
 
-    $pkg->_global->{arel}->parent_relation($package->arel, $opt);
-    $pkg->_global->{joins}->{$name} = $package;
-    $pkg->_global->{includes}->{$name} = {%$opt, belongs_to => 1, one => 1};
+    $pkg->_global->{joins}->{$name} = {%$opt, model => $package, belongs_to => 1, one => 1};
 
     no strict 'refs';
     *{$pkg."::$name"} = sub {
@@ -89,9 +87,7 @@ sub _define_has_relation {
         $opt->{foreign_key} = lc($1)."_id";
     }
 
-    $pkg->_global->{arel}->child_relation($package->arel, $opt);
-    $pkg->_global->{joins}->{$name} = $package;
-    $pkg->_global->{includes}->{$name} = {%$opt, one => $has_one};
+    $pkg->_global->{joins}->{$name} = {%$opt, model => $package, one => $has_one};
 
     no strict 'refs';
     *{$pkg."::$name"} = sub {

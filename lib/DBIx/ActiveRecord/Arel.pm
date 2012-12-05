@@ -15,7 +15,7 @@ sub create {
     my ($self, $table_name) = @_;
     bless {
         table => $table_name,
-        rels => {},
+        as => {},
         wheres => [],
         joins => [],
         binds => [],
@@ -24,15 +24,27 @@ sub create {
     }, $self;
 }
 
+sub alias {
+    my $self = shift;
+    $self->{as}->{$self->table} || $self->table;
+}
 sub table {shift->{table}}
+sub table_with_alias {
+    my $self = shift;
+    $self->{as}->{$self->table} ? $self->table." ".$self->{as}->{$self->table} : $self->table;
+}
 sub binds {@{shift->{binds}}}
 
 sub to_sql {
     my ($self) = @_;
 
-    $DBIx::ActiveRecord::Arel::Column::USE_FULL_NAME = $self->_has_join;
+    my $has_join = $self->_has_join;
+    $DBIx::ActiveRecord::Arel::Column::USE_FULL_NAME = $has_join;
+    $DBIx::ActiveRecord::Arel::Column::AS = $self->{as};
 
-    my $sql = 'SELECT '.$self->_build_select.' FROM ' . $self->table;
+    my $table = $has_join ? $self->table_with_alias : $self->table;
+
+    my $sql = 'SELECT '.$self->_build_select.' FROM ' . $table;
     my $join = $self->_build_join;
     $sql .= ' '.$join if $join;
     my $where = $self->_build_where;
@@ -207,24 +219,28 @@ sub between {
     $self->ge($key, $value1)->le($key, $value2);
 }
 
-# join
-sub joins {
-    my $self = shift;
+sub left_join {
+    my ($self, $target, $opt) = @_;
     my $o = $self->clone;
-    $o->{joins} ||= [];
-    my $parent = $self;
-    foreach my $arel (@_) {
-        push @{$o->{joins}}, $parent->{rels}->{$arel->table};
-        $parent = $arel;
-    }
+    %{$o->{as}} = (%{$target->{as}}, %{$o->{as}});
+    push @{$o->{joins}}, DBIx::ActiveRecord::Arel::Join->new('LEFT JOIN', $self->_col($opt->{primary_key}), $target->_col($opt->{foreign_key}));
     $o;
 }
 
-# merge
-sub merge {
-    my ($self, $scope) = @_;
+sub inner_join {
+    my ($self, $target, $opt) = @_;
     my $o = $self->clone;
-    my $s = $scope->clone;
+    %{$o->{as}} = (%{$target->{as}}, %{$o->{as}});
+    push @{$o->{joins}}, DBIx::ActiveRecord::Arel::Join->new('INNER JOIN', $self->_col($opt->{foreign_key}), $target->_col($opt->{primary_key}));
+    $o;
+}
+
+sub merge {
+    my ($self, $arel) = @_;
+    my $o = $self->clone;
+    my $s = $arel->clone;
+    %{$o->{as}} = (%{$s->{as}}, %{$o->{as}});
+    push @{$o->{joins}}, @{$s->{joins}};
     push @{$o->{wheres}}, @{$s->{wheres}};
     push @{$o->{selects}}, @{$s->{selects}};
     push @{$o->{options}->{group}}, @{$s->{options}->{group} || []};
@@ -232,7 +248,6 @@ sub merge {
     $o;
 }
 
-# select
 sub select {
     my $self = shift;
     my $o = $self->clone;
@@ -304,6 +319,13 @@ sub reverse {
     $o;
 }
 
+sub as {
+    my ($self, $alias) = @_;
+    my $s = $self->clone;
+    $s->{as}->{$s->table} = $alias;
+    $s;
+}
+
 sub insert {
     my ($self, $hash, $columns) = @_;
     my @keys = $columns ? grep {exists $hash->{$_}} @$columns : keys %$hash;
@@ -315,6 +337,7 @@ sub insert {
 sub update {
     my ($self, $hash, $columns) = @_;
     $DBIx::ActiveRecord::Arel::Column::USE_FULL_NAME = 0;
+    $DBIx::ActiveRecord::Arel::Column::AS = {};
     my @keys = $columns ? grep {exists $hash->{$_}} @$columns : keys %$hash;
     my @set = map {$_.' = ?'} @keys;
     my $sql = 'UPDATE '.$self->table.' SET '.join(', ', @set);
@@ -329,6 +352,7 @@ sub update {
 sub delete {
     my ($self) = @_;
     $DBIx::ActiveRecord::Arel::Column::USE_FULL_NAME = 0;
+    $DBIx::ActiveRecord::Arel::Column::AS = {};
     my $sql = 'DELETE FROM '.$self->table;
     my $where = $self->_build_where;
     $sql .= " WHERE $where" if $where;
@@ -338,20 +362,11 @@ sub delete {
 sub count {
     my ($self) = @_;
     $DBIx::ActiveRecord::Arel::Column::USE_FULL_NAME = $self->_has_join;
+    $DBIx::ActiveRecord::Arel::Column::AS = $self->{as};
     my $sql = 'SELECT COUNT(*) FROM '.$self->table;
     my $where = $self->_build_where;
     $sql .= " WHERE $where" if $where;
     $sql;
 }
 
-# relations
-sub parent_relation {
-    my ($self, $target, $opt) = @_;
-    $self->{rels}->{$target->table} = DBIx::ActiveRecord::Arel::Join->new('INNER JOIN', $self->_col($opt->{foreign_key}), $target->_col($opt->{primary_key}));
-}
-
-sub child_relation {
-    my ($self, $target, $opt) = @_;
-    $self->{rels}->{$target->table} = DBIx::ActiveRecord::Arel::Join->new('LEFT JOIN', $self->_col($opt->{primary_key}), $target->_col($opt->{foreign_key}));
-}
 1;

@@ -121,13 +121,18 @@ sub joins {
     my $self = shift;
     my $s = $self->scoped;
     my $model = $s->{model};
-    my @arels;
+    my $arel = $s->{arel};
     foreach my $name (@_) {
-        my $m = $model->_global->{joins}->{$name} || croak "no relation!";
-        push @arels, $m->arel;
+        my $opt = $model->_global->{joins}->{$name} || croak "no relation!";
+        my $m = $opt->{model};
+        if ($opt->{belongs_to}) {
+          $arel = $arel->merge($model->arel->inner_join($m->arel->as($name), $opt));
+        } else {
+          $arel = $arel->merge($model->arel->left_join($m->arel->as($name), $opt));
+        }
         $model = $m;
     }
-    $s->{arel} = $s->{arel}->joins(@arels);
+    $s->{arel} = $arel;
     $s;
 }
 
@@ -141,11 +146,10 @@ sub includes {
     foreach my $name (@_) {
         $inc->{$name} ||= {};
         $h = $inc->{$name};
-        my $model = $parent->_global->{joins}->{$name} || croak "no relation!";
-        my $opt = $parent->_global->{includes}->{$name};
-        my $i = {%$opt, model => $model, name => $name};
+        my $opt = $parent->_global->{joins}->{$name} || croak "no relation!";
+        my $i = {%$opt, name => $name};
         map {$h->{$_} = $i->{$_}} keys %$i;
-        $parent = $model;
+        $parent = $opt->{model};
         $h->{_includes} ||= {};
         $inc = $h->{_includes};
     }

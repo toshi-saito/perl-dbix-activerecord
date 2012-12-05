@@ -9,7 +9,7 @@ sub new {
 
 sub build {
     my $self = shift;
-    $self->{type}.' '.$self->{fk}->table->table.' ON '.$self->{fk}->name.' = '.$self->{pk}->name;
+    $self->{type}.' '.$self->{fk}->table->table_with_alias.' ON '.$self->{fk}->name.' = '.$self->{pk}->name;
 }
 
 1;

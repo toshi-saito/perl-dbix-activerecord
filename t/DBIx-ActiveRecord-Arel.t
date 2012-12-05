@@ -15,12 +15,21 @@ BEGIN {
     my $user = DBIx::ActiveRecord::Arel->create('users');
     my $comment = DBIx::ActiveRecord::Arel->create('comments');
 
-    $user->child_relation($post, {foreign_key => 'user_id', primary_key => 'id'});
-    $post->parent_relation($user, {foreign_key => 'user_id', primary_key => 'id'});
-
-    $post->child_relation($comment, {foreign_key => 'post_id', primary_key => 'id'});
-    $comment->parent_relation($post, {foreign_key => 'post_id', primary_key => 'id'});
-    $comment->parent_relation($user, {foreign_key => 'user_id', primary_key => 'id'});
+    sub join_user_post {
+        shift->left_join(shift, {foreign_key => 'user_id', primary_key => 'id'});
+    }
+    sub join_post_user {
+        shift->inner_join(shift, {foreign_key => 'user_id', primary_key => 'id'});
+    }
+    sub join_post_comment {
+        shift->left_join(shift, {foreign_key => 'post_id', primary_key => 'id'});
+    }
+    sub join_comment_post {
+        shift->inner_join(shift, {foreign_key => 'post_id', primary_key => 'id'});
+    }
+    sub join_comment_user {
+        shift->inner_join(shift, {foreign_key => 'user_id', primary_key => 'id'});
+    }
 
     # where
     my $scope = $user->eq(id => 1);
@@ -37,33 +46,33 @@ BEGIN {
     is_deeply [$scope->binds], [1,2];
 
     # join
-    $scope = $user->joins($post);
+    $scope = join_user_post($user, $post);
     is $scope->to_sql, 'SELECT users.* FROM users LEFT JOIN posts ON posts.user_id = users.id';
     is_deeply [$scope->binds], [];
 
     # join 2
-    $scope = $post->joins($user);
+    $scope = join_post_user($post, $user);
     is $scope->to_sql, 'SELECT posts.* FROM posts INNER JOIN users ON users.id = posts.user_id';
     is_deeply [$scope->binds], [];
 
     # join and where
-    $scope = $user->joins($post)->eq(name => 'test');
+    $scope = join_user_post($user, $post)->eq(name => 'test');
     is $scope->to_sql, 'SELECT users.* FROM users LEFT JOIN posts ON posts.user_id = users.id WHERE users.name = ?';
     is_deeply [$scope->binds], ['test'];
 
     # join and multi where
-    $scope = $user->joins($post)->eq(name => 'test')->eq(type => 0);
+    $scope = join_user_post($user, $post)->eq(name => 'test')->eq(type => 0);
     is $scope->to_sql, 'SELECT users.* FROM users LEFT JOIN posts ON posts.user_id = users.id WHERE users.name = ? AND users.type = ?';
     is_deeply [$scope->binds], ['test', 0];
 
     # merge
     my $post_scope = $post->eq(title => 'hogehoge');
-    $scope = $user->joins($post)->merge($post_scope);
+    $scope = join_user_post($user, $post)->merge($post_scope);
     is $scope->to_sql, 'SELECT users.* FROM users LEFT JOIN posts ON posts.user_id = users.id WHERE posts.title = ?';
     is_deeply [$scope->binds], ['hogehoge'];
 
     # double merge
-    $scope = $user->joins($post)->merge($user->eq(type => 1))->merge($post->eq(published => 1)->eq(deleted => 0));
+    $scope = join_user_post($user, $post)->merge($user->eq(type => 1))->merge($post->eq(published => 1)->eq(deleted => 0));
     is $scope->to_sql, 'SELECT users.* FROM users LEFT JOIN posts ON posts.user_id = users.id WHERE users.type = ? AND posts.published = ? AND posts.deleted = ?';
     is_deeply [$scope->binds], [1, 1, 0];
 
@@ -99,12 +108,12 @@ BEGIN {
     is_deeply [$scope->binds], [];
 
     # join and select
-    $scope = $user->joins($post)->select('id', 'name');
+    $scope = join_user_post($user, $post)->select('id', 'name');
     is $scope->to_sql, 'SELECT users.id, users.name FROM users LEFT JOIN posts ON posts.user_id = users.id';
     is_deeply [$scope->binds], [];
 
     # multi table select
-    $scope = $user->joins($post)->select('id', 'name')->merge($post->select('id', 'title'));
+    $scope = join_user_post($user, $post)->select('id', 'name')->merge($post->select('id', 'title'));
     is $scope->to_sql, 'SELECT users.id, users.name, posts.id, posts.title FROM users LEFT JOIN posts ON posts.user_id = users.id';
     is_deeply [$scope->binds], [];
 
@@ -134,12 +143,12 @@ BEGIN {
     is_deeply [$scope->binds], [];
 
     # join group
-    $scope = $user->joins($post)->merge($post->group('type'))->group('id');
+    $scope = join_user_post($user, $post)->merge($post->group('type'))->group('id');
     is $scope->to_sql, 'SELECT users.* FROM users LEFT JOIN posts ON posts.user_id = users.id GROUP BY posts.type, users.id';
     is_deeply [$scope->binds], [];
 
     # join order
-    $scope = $user->joins($post)->desc('created_at')->merge($post->asc('id'));
+    $scope = join_user_post($user, $post)->desc('created_at')->merge($post->asc('id'));
     is $scope->to_sql, 'SELECT users.* FROM users LEFT JOIN posts ON posts.user_id = users.id ORDER BY users.created_at DESC, posts.id';
     is_deeply [$scope->binds], [];
 
@@ -149,7 +158,7 @@ BEGIN {
     is $scope->to_sql, 'SELECT MAX(*) FROM users GROUP BY type';
     is_deeply [$scope->binds], [];
 
-    $scope = $user->select(DBIx::ActiveRecord::Arel::Native->new('MAX(*)'))->joins($post)->group('type');
+    $scope = join_user_post($user->select(DBIx::ActiveRecord::Arel::Native->new('MAX(*)')), $post)->group('type');
     is $scope->to_sql, 'SELECT MAX(*) FROM users LEFT JOIN posts ON posts.user_id = users.id GROUP BY users.type';
     is_deeply [$scope->binds], [];
 
@@ -173,7 +182,7 @@ BEGIN {
     is_deeply [$scope->binds], [5, 'hoge'];
 
     # join where
-    $scope = $user->joins($post)->where("name = ?", 'fuga')->merge($post->where('name2 = ?', 'hoge')->eq(id => 45));
+    $scope = join_user_post($user, $post)->where("name = ?", 'fuga')->merge($post->where('name2 = ?', 'hoge')->eq(id => 45));
     is $scope->to_sql, 'SELECT users.* FROM users LEFT JOIN posts ON posts.user_id = users.id WHERE name = ? AND name2 = ? AND posts.id = ?';
     is_deeply [$scope->binds], ['fuga', 'hoge', 45];
 
@@ -183,15 +192,25 @@ BEGIN {
     is_deeply [$scope->binds], ['AA'];
 
     # nested join
-    $scope = $post->joins($comment);
+    $scope = join_post_comment($post, $comment);
     is $scope->to_sql, 'SELECT posts.* FROM posts LEFT JOIN comments ON comments.post_id = posts.id';
 
-    $scope = $user->joins($post, $comment);
+    $scope = join_user_post($user, $post)->merge(join_post_comment($post, $comment));
     is $scope->to_sql, 'SELECT users.* FROM users LEFT JOIN posts ON posts.user_id = users.id LEFT JOIN comments ON comments.post_id = posts.id';
 
     $scope = $scope->merge($comment->eq(content => 'hoge'));
     is $scope->to_sql, 'SELECT users.* FROM users LEFT JOIN posts ON posts.user_id = users.id LEFT JOIN comments ON comments.post_id = posts.id WHERE comments.content = ?';
     is_deeply [$scope->binds], ['hoge'];
+
+    # table as
+    $scope = $post->as('me');
+    is $scope->to_sql, 'SELECT * FROM posts';
+    is_deeply [$scope->binds], [];
+
+    $scope = join_post_user($post->as("me"), $user->as('user'));
+    is $scope->to_sql, 'SELECT me.* FROM posts me INNER JOIN users user ON user.id = me.user_id';
+    is_deeply [$scope->binds], [];
+
 }
 
 done_testing;
