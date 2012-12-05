@@ -2,7 +2,9 @@ Changes
 Makefile.PL
 MANIFEST
 README
+README.md
 t/DBIx-ActiveRecord.t
+t/DBIx-ActiveRecord-WithMySQL.t
 t/DBIx-ActiveRecord-Arel.t
 lib/DBIx/ActiveRecord.pm
 lib/DBIx/ActiveRecord/Arel.pm
