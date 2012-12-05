@@ -247,7 +247,7 @@ DBIx::ActiveRecord->connect("dbi:mysql:ar_test", 'root', '', {});
     $s->all;
 
     $s = User->limit(5)->offset(2);
-    is $s->to_sql, "SELECT * FROM users WHERE deleted != ? LIMIT 5 OFFSET 2";
+    is $s->to_sql, "SELECT * FROM users WHERE deleted != ? LIMIT ? OFFSET ?";
     $s->all;
 
     $s = User->eq(id => 1)->lock;
