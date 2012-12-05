@@ -1,6 +1,7 @@
 package DBIx::ActiveRecord::Relation;
 use strict;
 use warnings;
+use Carp;
 
 use DBIx::ActiveRecord;
 use DBIx::ActiveRecord::Scope;
@@ -28,7 +29,7 @@ sub AUTOLOAD {
     $AUTOLOAD =~ /([^:]+)$/;
     my $m = $1;
     my $s = $self->{model}->_global->{scopes}->{$m};
-    die "method missing $AUTOLOAD" if !$s;
+    croak "method missing $AUTOLOAD" if !$s;
     $s->($self->scoped, @_);
 }
 

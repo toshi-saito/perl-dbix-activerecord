@@ -1,6 +1,7 @@
 package DBIx::ActiveRecord::Scope;
 use strict;
 use warnings;
+use Carp;
 
 use base qw/Exporter/;
 
@@ -122,8 +123,8 @@ sub joins {
     my $model = $s->{model};
     my @arels;
     foreach my $name (@_) {
-        my $m = $model->_global->{joins}->{$name} || die "no relation!";
-        push @arels, $m->_global->{arel};
+        my $m = $model->_global->{joins}->{$name} || croak "no relation!";
+        push @arels, $m->arel;
         $model = $m;
     }
     $s->{arel} = $s->{arel}->joins(@arels);
@@ -140,7 +141,7 @@ sub includes {
     foreach my $name (@_) {
         $inc->{$name} ||= {};
         $h = $inc->{$name};
-        my $model = $parent->_global->{joins}->{$name} || die "no relation!";
+        my $model = $parent->_global->{joins}->{$name} || croak "no relation!";
         my $opt = $parent->_global->{includes}->{$name};
         my $i = {%$opt, model => $model, name => $name};
         map {$h->{$_} = $i->{$_}} keys %$i;

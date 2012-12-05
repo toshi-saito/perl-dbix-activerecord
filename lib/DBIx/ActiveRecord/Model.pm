@@ -1,6 +1,7 @@
 package DBIx::ActiveRecord::Model;
 use strict;
 use warnings;
+use Carp;
 
 use POSIX;
 
@@ -77,7 +78,7 @@ sub AUTOLOAD {
     $AUTOLOAD =~ /([^:]+)$/;
     my $m = $1;
     my $s = $self->_global->{scopes}->{$m};
-    die "method missing $AUTOLOAD" if !$s;
+    croak "method missing $AUTOLOAD" if !$s;
     $s->($self->scoped, @_);
 }
 sub DESTROY{}
@@ -202,7 +203,7 @@ sub _record_timestamp {
 sub _pkey_scope {
     my $self = shift;
     my $s = $self->unscoped;
-    $s = $s->eq($_ => $self->{-org}->{$_} || die 'primary key is empty') for @{$self->_global->{primary_keys}};
+    $s = $s->eq($_ => $self->{-org}->{$_} || croak 'no primary key') for @{$self->_global->{primary_keys}};
     $s;
 }
 
