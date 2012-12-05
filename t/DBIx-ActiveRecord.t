@@ -210,7 +210,7 @@ subtest association => sub {
 
     # has_one
     $u->comment_one;
-    is_issue_sql "SELECT * FROM comments WHERE user_id = ? LIMIT 1", 1;
+    is_issue_sql "SELECT * FROM comments WHERE user_id = ? LIMIT ?", 1, 1;
     is_nothing_more;
 
 
@@ -225,7 +225,7 @@ subtest association => sub {
     });
 
     $p->user;
-    is_issue_sql "SELECT * FROM users WHERE id = ? LIMIT 1", 3;
+    is_issue_sql "SELECT * FROM users WHERE id = ? LIMIT ?", 3, 1;
     is_nothing_more;
 
     # and where
@@ -285,7 +285,7 @@ subtest merge => sub {ok 1;
 
 subtest limit_offset => sub {
     Post->limit(4)->offset(2)->all;
-    is_issue_sql "SELECT * FROM posts LIMIT 4 OFFSET 2";
+    is_issue_sql "SELECT * FROM posts LIMIT ? OFFSET ?", 4, 2;
     is_nothing_more;
 };
 
@@ -377,7 +377,7 @@ subtest includes_belongs_to => sub {
         {id => 1, user_id => 2},
     );
     my $p = Post->includes("user")->first;
-    is_issue_sql "SELECT * FROM posts LIMIT 1";
+    is_issue_sql "SELECT * FROM posts LIMIT ?", 1;
     is_issue_sql "SELECT * FROM users WHERE id IN (?)", 2;
     is_nothing_more;
 
@@ -389,14 +389,14 @@ subtest cached => sub {
 
     my $s = User->unscoped->asc("id");
     $s->first;
-    is_issue_sql "SELECT * FROM users ORDER BY id LIMIT 1";
+    is_issue_sql "SELECT * FROM users ORDER BY id LIMIT ?", 1;
     is_nothing_more;
 
     $s->first;
     is_nothing_more;
 
     $s->last;
-    is_issue_sql "SELECT * FROM users ORDER BY id DESC LIMIT 1";
+    is_issue_sql "SELECT * FROM users ORDER BY id DESC LIMIT ?", 1;
     is_nothing_more;
 
     $s->last;
@@ -442,11 +442,11 @@ subtest chached_associates => sub {
         {id => 1, user_id => 2},
     );
     my $p = Post->first;
-    is_issue_sql "SELECT * FROM posts LIMIT 1";
+    is_issue_sql "SELECT * FROM posts LIMIT ?", 1;
     is_nothing_more;
 
     $p->user;
-    is_issue_sql "SELECT * FROM users WHERE id = ? LIMIT 1", 2;
+    is_issue_sql "SELECT * FROM users WHERE id = ? LIMIT ?", 2, 1;
     is_nothing_more;
 };
 

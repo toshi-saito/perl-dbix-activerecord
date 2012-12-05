@@ -100,8 +100,14 @@ sub _build_options {
     my $order = $self->_build_order;
     push @sql, 'ORDER BY '.$order if $order;
 
-    push @sql, 'LIMIT '.$ops->{limit} if $ops->{limit};
-    push @sql, 'OFFSET '.$ops->{offset} if $ops->{offset};
+    if ($ops->{limit}) {
+        push @sql, 'LIMIT ?';
+        push @{$self->{binds}}, $ops->{limit};
+    }
+    if ($ops->{offset}) {
+        push @sql, 'OFFSET ?';
+        push @{$self->{binds}}, $ops->{offset};
+    }
     push @sql, 'FOR UPDATE' if $ops->{lock};
     join (' ', @sql);
 }

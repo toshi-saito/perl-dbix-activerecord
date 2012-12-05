@@ -119,8 +119,8 @@ BEGIN {
 
     # limit offset
     $scope = $user->limit(10)->offset(20);
-    is $scope->to_sql, 'SELECT * FROM users LIMIT 10 OFFSET 20';
-    is_deeply [$scope->binds], [];
+    is $scope->to_sql, 'SELECT * FROM users LIMIT ? OFFSET ?';
+    is_deeply [$scope->binds], [10, 20];
 
     # lock
     $scope = $user->lock;
