@@ -1,0 +1,14 @@
+<div class="row-fluid">
+  <% INCLUDE '_side.tt' %>
+  <div class="span9">
+    <form method="post" action="/add_post">
+      <fieldset>
+        <legend>New post of "<% category.name %>"</legend>
+        <input type="hidden" name="category_id" value="<% category.id %>"/>
+        <input type="text" name="title" class="span8" placeholder="title"/><br/>
+        <textarea name="content" class="span8" rows="10"></textarea><br/>
+        <button type="submit" class="btn btn-primary">Submit</button>
+      </fieldset>
+    </form>
+  </div><!--/span-->
+</div><!--/row-->

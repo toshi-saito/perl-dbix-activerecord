@@ -1,0 +1,26 @@
+<div class="row-fluid">
+  <% INCLUDE '_side.tt' %>
+  <div class="span9">
+    <h3 style="border-bottom:1px solid #ccc;"><% post.title %></h3>
+    <div>
+      <% post.content | html_line_break %>
+    </div>
+    <h4 style="border-bottom:1px solid #ccc;">Comments:</h4>
+    <div>
+      <% FOREACH c IN post.comments.all %>
+      <div style="border-bottom:1px solid #ccc; padding:5px;">
+        <% c.content | html_line_break %>
+      </div>
+      <% END %>
+    </div>
+
+    <form style="margin-top:30px;" method="post" action="/add_comment">
+      <fieldset>
+        <input type="hidden" name="post_id" value="<% post.id %>"/>
+        <textarea name="content" class="span5" rows="4"></textarea><br/>
+        <button type="submit" class="btn btn-primary">Submit</button>
+      </fieldset>
+    </form>
+
+  </div><!--/span-->
+</div><!--/row-->

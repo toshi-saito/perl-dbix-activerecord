@@ -1,0 +1,17 @@
+<div class="row-fluid">
+  <% INCLUDE '_side.tt' %>
+  <div class="span9">
+    <h2>Hello, DBIx::ActiveRecord with Dancer!</h2>
+
+    <h3>Posts</h3>
+
+    <% FOREACH c IN categories %>
+    <h4 style="margin-top:30px;"><% c.name %> <a class="btn btn-mini" href="/new_post?cid=<% c.id %>">new post</a></h4>
+    <% FOREACH p IN c.posts.all %>
+    <div style="border-bottom: 1px solid #CCC; padding: 3px; margin-bottom: 2px;">
+      <a href="/post?id=<% p.id %>"><% p.title %></a>
+    </div>
+    <% END %>
+    <% END %>
+  </div><!--/span-->
+</div><!--/row-->

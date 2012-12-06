@@ -1,0 +1,17 @@
+<div class="span3">
+  <div class="well sidebar-nav">
+    <ul class="nav nav-list">
+      <li class="nav-header">Categories</li>
+      <% FOREACH category IN categories %>
+      <li><a href="/category?cid=<% category.id %>"><% category.name %></a></li>
+      <% END %>
+    </ul>
+  </div><!--/.well -->
+  <div>
+  Create category:
+    <form method="post" action="/add_category">
+      <input type="text" name="name"/>
+      <input type="submit" value="Create"/>
+    </form>
+  </div>
+</div><!--/span-->

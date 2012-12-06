@@ -1,0 +1,11 @@
+<div class="row-fluid">
+  <% INCLUDE '_side.tt' %>
+  <div class="span9">
+    <h3>Post of "<% category.name %>"</h3>
+    <% FOREACH p IN category.posts.all %>
+    <div style="border-bottom: 1px solid #CCC; padding: 3px; margin-bottom: 2px;">
+      <a href="/post?id=<% p.id %>"><% p.title %></a>
+    </div>
+    <% END %>
+  </div><!--/span-->
+</div><!--/row-->
