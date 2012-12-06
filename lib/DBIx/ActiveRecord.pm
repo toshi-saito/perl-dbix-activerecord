@@ -137,8 +137,8 @@ define Model
     __PACKAGE__->primary_keys(qw/id/); # required
 
     # scope
-    __PACKAGE__->default_scope(sub{ shift->eq(deleted => 0) });
-    __PACKAGE__->scope(adult => sub{ shift->le(age => 20) });
+    __PACKAGE__->default_scope(sub{ shift->ne(deleted => 1) });
+    __PACKAGE__->scope(adult => sub{ shift->ge(age => 20) });
     __PACKAGE__->scope(latest => sub{ shift->desc('created_at') });
 
     # association
