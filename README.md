@@ -2,6 +2,16 @@ perl-DBIx-ActiveRecord
 ======================
 
 Rails3 ActiveRecord like O/R Mapper library for perl
+it's very easy, lightweight, and has powerful syntax.
+
+INSTALLATION
+============
+
+  % cpan DBIx::ActiveRecord
+
+
+Features Highlight
+==================
 
 Define Model
 --
