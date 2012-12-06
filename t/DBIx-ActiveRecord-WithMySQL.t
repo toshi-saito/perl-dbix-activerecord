@@ -1,6 +1,6 @@
 use strict;
 use warnings;
-use Test::More skip_all => 'it requires mysql database';
+use Test::More;# skip_all => 'it requires mysql database';
 
 use FindBin;
 use lib "$FindBin::Bin/../lib";
@@ -68,7 +68,7 @@ __PACKAGE__->primary_keys(qw/id/);
 package main;
 
 
-DBIx::ActiveRecord->connect("dbi:mysql:ar_test", 'root', '', {});
+DBIx::ActiveRecord->connect("dbi:mysql:ar_test", 'root', 'root', {});
 {
     # set up
     User->unscoped->delete_all;
@@ -369,6 +369,14 @@ DBIx::ActiveRecord->connect("dbi:mysql:ar_test", 'root', '', {});
 
     my $users = User->includes('posts', 'comments');
     ok @{$users};
+}
+
+{
+    # count
+    Post->count;
+    Post->eq(title => 5)->count;
+    Post->joins('user')->merge(User->eq(id => 3))->count;
+
 }
 
 done_testing;

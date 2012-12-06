@@ -192,6 +192,8 @@ sub delete {
     $sth->execute($s->_binds) || croak $sth->errstr;
 }
 
+sub count { shift->scoped->count }
+
 sub _record_timestamp {
     my ($self, $columns) = @_;
     my %cs = map {$_ => 1} @{$self->_global->{columns}};

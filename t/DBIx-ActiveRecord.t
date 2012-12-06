@@ -67,6 +67,7 @@ sub fetchrow_hashref {
     my $self = shift;
     shift @{$self->{res}};
 }
+sub fetchrow_arrayref {}
 
 package main;
 
@@ -456,6 +457,21 @@ subtest as => sub {
     is_issue_sql "SELECT me.* FROM users me LEFT JOIN posts posts ON posts.user_id = me.id LEFT JOIN comments comments ON comments.post_id = posts.id WHERE me.deleted = ? AND posts.title = ? AND comments.content = ?", 0, 'hoge', 'fuga';
     is_nothing_more;
 
+};
+
+subtest count => sub {
+
+    Post->count;
+    is_issue_sql "SELECT COUNT(*) FROM posts";
+    is_nothing_more;
+
+    Post->eq(type => 5)->count;
+    is_issue_sql "SELECT COUNT(*) FROM posts WHERE type = ?", 5;
+    is_nothing_more;
+
+    Post->joins('user')->merge(User->eq(type => 3))->count;
+    is_issue_sql "SELECT COUNT(*) FROM posts me INNER JOIN users user ON user.id = me.user_id WHERE user.deleted = ? AND user.type = ?", 0, 3;
+    is_nothing_more;
 };
 
 done_testing;

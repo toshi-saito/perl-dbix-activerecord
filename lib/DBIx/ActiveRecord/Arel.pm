@@ -369,7 +369,12 @@ sub count {
     my ($self) = @_;
     $DBIx::ActiveRecord::Arel::Column::USE_FULL_NAME = $self->_has_join;
     $DBIx::ActiveRecord::Arel::Column::AS = $self->{as};
-    my $sql = 'SELECT COUNT(*) FROM '.$self->table;
+
+    my $table = $self->_has_join ? $self->table_with_alias : $self->table;
+
+    my $sql = 'SELECT COUNT(*) FROM '.$table;
+    my $join = $self->_build_join;
+    $sql .= ' '.$join if $join;
     my $where = $self->_build_where;
     $sql .= " WHERE $where" if $where;
     $sql;

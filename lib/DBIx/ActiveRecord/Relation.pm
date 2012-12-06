@@ -54,4 +54,15 @@ sub last {
     $self->{cache}->{last} = DBIx::ActiveRecord::Scope::last($self, @_);
 }
 
+sub count {
+    my ($self) = @_;
+    return $self->{cache}->{count} if exists $self->{cache}->{count};
+    my $arel = $self->{arel}->clone;
+    my $sql = $arel->count;
+    my $sth = $self->{model}->dbh->prepare($sql);
+    $sth->execute($arel->binds) || croak $sth->errstr;
+    my $row = $sth->fetchrow_arrayref;
+    $self->{cache}->{count} = $row->[0];
+}
+
 1;
