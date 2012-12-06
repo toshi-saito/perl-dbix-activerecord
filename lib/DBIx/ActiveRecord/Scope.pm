@@ -38,7 +38,7 @@ sub update_all {
     my $s = $self->{arel}->clone;
     my $sql = $s->update($sets);
     my $sth = $self->{model}->dbh->prepare($sql);
-    $sth->execute($s->binds);
+    $sth->execute($s->binds) || croak $sth->errstr;
 }
 
 sub delete_all {
@@ -47,7 +47,7 @@ sub delete_all {
     my $s = $self->{arel}->clone;
     my $sql = $s->delete;
     my $sth = $self->{model}->dbh->prepare($sql);
-    $sth->execute($s->binds);
+    $sth->execute($s->binds) || croak $sth->errstr;
 }
 
 sub all {

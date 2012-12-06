@@ -163,7 +163,7 @@ sub insert {
     $self->_record_timestamp(INSERT_RECORD_TIMESTAMPS);
     my $sql = $s->{arel}->insert($self->to_hash, $self->_global->{columns});
     my $sth = $self->dbh->prepare($sql);
-    my $res = $sth->execute($s->_binds);
+    my $res = $sth->execute($s->_binds) || croak $sth->errstr;
 
     my $insert_id = $sth->{'insertid'} || $self->dbh->{'mysql_insertid'};
     $self->{-set}->{$self->_global->{primary_keys}->[0]} = $insert_id if $insert_id;
@@ -179,7 +179,7 @@ sub update {
     $self->_record_timestamp(UPDATE_RECORD_TIMESTAMPS);
     my $sql = $s->{arel}->update($self->{-set}, $self->_global->{columns});
     my $sth = $self->dbh->prepare($sql);
-    $sth->execute($s->_binds);
+    $sth->execute($s->_binds) || croak $sth->errstr;
 }
 
 sub delete {
@@ -189,7 +189,7 @@ sub delete {
     my $s = $self->_pkey_scope;
     my $sql = $s->{arel}->delete;
     my $sth = $self->dbh->prepare($sql);
-    $sth->execute($s->_binds);
+    $sth->execute($s->_binds) || croak $sth->errstr;
 }
 
 sub _record_timestamp {
@@ -211,7 +211,7 @@ sub _pkey_scope {
 sub instantiates_by_relation {
     my ($self, $relation) = @_;
     my $sth = $self->dbh->prepare($relation->to_sql);
-    $sth->execute($relation->_binds);
+    $sth->execute($relation->_binds) || croak $sth->errstr;
     my @all;
     while (my $row = $sth->fetchrow_hashref) {
         push @all, $self->_new_from_storage($row);
