@@ -130,11 +130,10 @@ DBIx::ActiveRecord - rails3 ActiveRecord like O/R Mapper
 
 define Model
 
-    use DBIx::ActiveRecord::Model;
     package MyApp::Model::User;
     use base 'DBIx::ActiveRecord::Model';
     __PACKAGE__->table('users'); # table name is required
-    __PACKAGE__->column(qw/id name created_at updated_at/); # required
+    __PACKAGE__->columns(qw/id name created_at updated_at/); # required
     __PACKAGE__->primary_keys(qw/id/); # required
 
     # scope

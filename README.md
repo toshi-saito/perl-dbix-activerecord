@@ -6,10 +6,11 @@ Rails3 ActiveRecord like O/R Mapper library for perl
 Define Model
 --
 ```perl:MyApp/Model/User.pm
-use DBIx::ActiveRecord::Model;
 package MyApp::Model::User;
 use base 'DBIx::ActiveRecord::Model';
 __PACKAGE__->table('users'); # table name is required
+__PACKAGE__->columns(qw/id name created_at updated_at/); # required
+__PACKAGE__->primary_keys(qw/id/); # required
 
 # scope
 __PACKAGE__->default_scope(sub{ shift->eq(deleted => 0) });
@@ -72,10 +73,10 @@ User->in(id => [1..10])->not_in(type => [2, 4]);
 User->null('profile')->not_null('type');
 
 # BETWEEN
-User->between('c', '', '')
+User->between('number', 1, 100)
 
 # etc..
-User->limit(1)->offfset(2)->asc('created_at')->desc('id')
+User->limit(1)->offset(2)->asc('created_at')->desc('id')
 ```
 
 Associates
@@ -114,6 +115,6 @@ includes
 --
 ```perl
 my $u = User->eq(id => 1)->includes('posts');
-# "$u->posts" is already read.
+# "$u->posts" is already load.
 ```
 
