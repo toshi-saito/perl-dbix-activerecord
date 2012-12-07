@@ -6,7 +6,7 @@ use warnings;
 
 use DBI;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 our $DBH;
 our $SINGLETON;
@@ -720,7 +720,9 @@ do delete.
 
 =head1 BUGS AND LIMITATIONS
 
-No bugs have been reported.
+This module is alpha version.
+Please give me feedback.
+Please PullRequest with github If you have more better idea.
 
 =head1 AUTHOR
 

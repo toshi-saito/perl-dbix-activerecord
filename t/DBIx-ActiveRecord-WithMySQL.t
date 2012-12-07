@@ -1,6 +1,6 @@
 use strict;
 use warnings;
-use Test::More;# skip_all => 'it requires mysql database';
+use Test::More skip_all => 'it requires mysql database';
 
 use FindBin;
 use lib "$FindBin::Bin/../lib";
