@@ -9,7 +9,10 @@ sub new {
 
 sub build {
     my $self = shift;
-    $self->{type}.' '.$self->{fk}->table->table_with_alias.' ON '.$self->{fk}->name.' = '.$self->{pk}->name;
+    my $table = $self->{fk}->table->table;
+    my $alias = $DBIx::ActiveRecord::Arel::Column::AS->{$table};
+    $table .= " $alias" if $alias;
+    $self->{type}.' '.$table.' ON '.$self->{fk}->name.' = '.$self->{pk}->name;
 }
 
 1;

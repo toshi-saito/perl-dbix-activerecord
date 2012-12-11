@@ -7,16 +7,26 @@ use base qw/Exporter/;
 
 our @ISA = qw/Exporter/;
 my @delegates = qw/eq ne in not_in null not_null gt lt ge le like contains starts_with ends_with between where select limit offset lock group asc desc reorder reverse/;
-our @EXPORT = (@delegates, qw/scoped_instance _scope _execute merge joins includes _includes _loads_includes update_all delete_all/);
+our @EXPORT = (@delegates, qw/scoped_instance _scope _execute merge joins includes _includes _loads_includes update_all delete_all _is_relation/);
 
 {
     no strict 'refs';
     foreach my $m (@delegates) {
         *{__PACKAGE__."::$m"} = sub {
             my $self = shift;
-            $self->_scope($m, @_);
+            my @args = @_;
+            @args = map { $self->_is_relation($_) ? $_->{arel} : $_ } @args;
+            $self->_scope($m, @args);
         };
     }
+}
+
+sub _is_relation {
+    my ($self, $obj) = @_;
+    return 0 if !ref $obj;
+    return 0 if ref $obj eq 'HASH';
+    return 0 if ref $obj eq 'ARRAY';
+    return $obj->isa('DBIx::ActiveRecord::Relation');
 }
 
 sub _scope {
@@ -35,18 +45,16 @@ sub scoped_instance {
 sub update_all {
     my ($self, $sets) = @_;
     $self = $self->scoped;
-    my $s = $self->{arel}->clone;
-    my $sql = $s->update($sets);
-    my $sth = $self->{model}->dbh->prepare($sql);
+    my $s = $self->{arel}->update($sets);
+    my $sth = $self->{model}->dbh->prepare($s->to_sql);
     $sth->execute($s->binds) || croak $sth->errstr;
 }
 
 sub delete_all {
     my ($self) = @_;
     $self = $self->scoped;
-    my $s = $self->{arel}->clone;
-    my $sql = $s->delete;
-    my $sth = $self->{model}->dbh->prepare($sql);
+    my $s = $self->{arel}->delete;
+    my $sth = $self->{model}->dbh->prepare($s->to_sql);
     $sth->execute($s->binds) || croak $sth->errstr;
 }
 

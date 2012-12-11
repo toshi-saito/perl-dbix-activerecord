@@ -7,10 +7,17 @@ sub new {
     bless {value => $value}, $self;
 }
 
-sub name {
-    shift->{value};
+sub placeholder {
+    my $self = shift;
+    if (ref $self->{value} eq 'ARRAY') {
+        return join(', ', map {'?'} @{$self->{value}});
+    }
+    '?';
 }
 
-sub is_native {0}
+sub binds {
+    my $self = shift;
+    ref $self->{value} eq 'ARRAY' ? @{$self->{value}} : $self->{value};
+}
 
 1;

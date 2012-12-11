@@ -7,10 +7,12 @@ sub new {
     bless {func => $func}, $self;
 }
 
-sub name {
-    shift->{func};
+sub placeholder {
+    my $self = shift;
+    return $self->{func};
 }
 
-sub is_native {1}
+sub name {shift->placeholder}
 
+sub binds {@{[]}}
 1;

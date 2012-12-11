@@ -16,16 +16,14 @@ sub build {
     my $where;
     my @binds;
     if ($self->op eq 'IN' || $self->op eq 'NOT IN') {
-        $where = $self->column_name.' '.$self->op.' ('.join(', ', map {'?'} @{$self->value->name}).')';
-        push @binds, @{$self->value->name};
+        $where = $self->column_name.' '.$self->op.' ('.$self->value->placeholder.')';
+        push @binds, $self->value->binds;
     } elsif ($self->op eq 'IS NULL' || $self->op eq 'IS NOT NULL') {
         $where = $self->column_name.' '.$self->op;
     } else {
-        $where = $self->column_name.' '. $self->op.' ?';
-        push @binds, $self->value->name;
+        $where = $self->column_name.' '. $self->op.' '.$self->value->placeholder;
+        push @binds, $self->value->binds;
     }
-    @binds = () if $self->value->is_native;
-
     return ($where, \@binds);
 }
 

@@ -474,4 +474,10 @@ subtest count => sub {
     is_nothing_more;
 };
 
+subtest subquery => sub {
+    User->in(id => Post->select('user_id')->eq(type => 2))->all;
+    is_issue_sql "SELECT * FROM users WHERE deleted = ? AND id IN (SELECT user_id FROM posts WHERE type = ?)", 0, 2;
+    is_nothing_more;
+};
+
 done_testing;

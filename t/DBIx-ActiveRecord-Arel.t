@@ -163,17 +163,18 @@ BEGIN {
     is_deeply [$scope->binds], [];
 
     # update
-    $scope = $user->eq(id => 3);
-    is $scope->update({hoge => 1}), 'UPDATE users SET hoge = ? WHERE id = ?';
+    $scope = $user->eq(id => 3)->update({hoge => 1});
+    is $scope->to_sql, 'UPDATE users SET hoge = ? WHERE id = ?';
     is_deeply [$scope->binds], [1,3];
 
     # insert
-    is $user->insert({name => 'hoge', profile => 'hogehoge'}), 'INSERT INTO users (profile, name) VALUES (?, ?)';
-    is_deeply [$user->binds], ['hogehoge', 'hoge'];
+    $scope = $user->insert({name => 'hoge', profile => 'hogehoge'});
+    is $scope->to_sql, 'INSERT INTO users (profile, name) VALUES (?, ?)';
+    is_deeply [$scope->binds], ['hogehoge', 'hoge'];
 
     # delete
-    $scope = $user->in(id => [1,2,3]);
-    is $scope->delete, 'DELETE FROM users WHERE id IN (?, ?, ?)';
+    $scope = $user->in(id => [1,2,3])->delete;
+    is $scope->to_sql, 'DELETE FROM users WHERE id IN (?, ?, ?)';
     is_deeply [$scope->binds], [1,2,3];
 
     # where
@@ -187,8 +188,8 @@ BEGIN {
     is_deeply [$scope->binds], ['fuga', 'hoge', 45];
 
     # count
-    $scope = $user->eq(type => 'AA');
-    is $scope->count, 'SELECT COUNT(*) FROM users WHERE type = ?';
+    $scope = $user->eq(type => 'AA')->count;
+    is $scope->to_sql, 'SELECT COUNT(*) FROM users WHERE type = ?';
     is_deeply [$scope->binds], ['AA'];
 
     # nested join
@@ -211,6 +212,10 @@ BEGIN {
     is $scope->to_sql, 'SELECT me.* FROM posts me INNER JOIN users user ON user.id = me.user_id';
     is_deeply [$scope->binds], [];
 
+    # sub query
+    $scope = $user->in(id => $post->select('user_id')->eq(type => 2)->eq(deleted => 1))->eq(deleted => 0);
+    is $scope->to_sql, 'SELECT * FROM users WHERE id IN (SELECT user_id FROM posts WHERE type = ? AND deleted = ?) AND deleted = ?';
+    is_deeply [$scope->binds], [2, 1, 0];
 }
 
 done_testing;

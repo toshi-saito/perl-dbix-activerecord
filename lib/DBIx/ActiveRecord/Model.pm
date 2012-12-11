@@ -161,9 +161,9 @@ sub insert {
 
     my $s = $self->scoped;
     $self->_record_timestamp(INSERT_RECORD_TIMESTAMPS);
-    my $sql = $s->{arel}->insert($self->to_hash, $self->_global->{columns});
-    my $sth = $self->dbh->prepare($sql);
-    my $res = $sth->execute($s->_binds) || croak $sth->errstr;
+    my $arel = $s->{arel}->insert($self->to_hash, $self->_global->{columns});
+    my $sth = $self->dbh->prepare($arel->to_sql);
+    my $res = $sth->execute($arel->binds) || croak $sth->errstr;
 
     my $insert_id = $sth->{'insertid'} || $self->dbh->{'mysql_insertid'};
     $self->{-set}->{$self->_global->{primary_keys}->[0]} = $insert_id if $insert_id;
@@ -177,9 +177,9 @@ sub update {
 
     my $s = $self->_pkey_scope;
     $self->_record_timestamp(UPDATE_RECORD_TIMESTAMPS);
-    my $sql = $s->{arel}->update($self->{-set}, $self->_global->{columns});
-    my $sth = $self->dbh->prepare($sql);
-    $sth->execute($s->_binds) || croak $sth->errstr;
+    my $arel = $s->{arel}->update($self->{-set}, $self->_global->{columns});
+    my $sth = $self->dbh->prepare($arel->to_sql);
+    $sth->execute($arel->binds) || croak $sth->errstr;
 }
 
 sub delete {
@@ -187,9 +187,9 @@ sub delete {
     return if !$self->in_storage;
 
     my $s = $self->_pkey_scope;
-    my $sql = $s->{arel}->delete;
-    my $sth = $self->dbh->prepare($sql);
-    $sth->execute($s->_binds) || croak $sth->errstr;
+    my $arel = $s->{arel}->delete;
+    my $sth = $self->dbh->prepare($arel->to_sql);
+    $sth->execute($arel->binds) || croak $sth->errstr;
 }
 
 sub count { shift->scoped->count }
