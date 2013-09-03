@@ -9,4 +9,9 @@ WriteMakefile(
     ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
       (ABSTRACT_FROM  => 'lib/DBIx/ActiveRecord.pm', # retrieve abstract from module
        AUTHOR         => 'Toshiyuki Saito') : ()),
+    META_MERGE        => {
+        resources => {
+            repository => 'https://github.com/toshi-saito/perl-dbix-activerecord',
+        },
+    },
 );
